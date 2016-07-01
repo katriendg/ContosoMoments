@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Xamarin.Forms;
+using System.Linq;
 
 namespace ContosoMoments
 {
@@ -26,19 +27,34 @@ namespace ContosoMoments
         public async Task ProcessFileSynchronizationAction(MobileServiceFile file, FileSynchronizationAction action)
         {
             try {
+                // Process only file deletes. File create and update are processed in bulk, so that
+                // we can choose what image size to download among those available
                 if (action == FileSynchronizationAction.Delete) {
                     await FileHelper.DeleteLocalFileAsync(file, theApp.DataFilesPath);
-                }
-                else { // Create or update - download large format image by looking for 'lg' in the StoreUri parameter
-                    Trace.WriteLine(string.Format("File - storeUri: {1}", file.Name, file.StoreUri));
-
-                    if (file.StoreUri.Contains("lg")) {
-                        await this.theApp.DownloadFileAsync(file);
-                    }
                 }
             }
             catch (Exception e) { // should catch WrappedStorageException, but this type is internal in the Storage SDK!
                 Trace.WriteLine("Exception while downloading blob, blob probably does not exist: " + e);
+            }
+        }
+
+        public async Task ProcessFilesAsync(string id)
+        {
+            Debug.WriteLine($"ProcessFilesAsync for record: {id}");
+
+            var platform = DependencyService.Get<IPlatform>();
+
+            var item = await theApp.imageTableSync.LookupAsync(id);
+            var files = await theApp.imageTableSync.GetFilesAsync<Models.Image>(item);
+
+            // download medium image if it exists, otherwise download the large image
+            // the large image has no size prefix, so just exclude "sm" and "xs"
+            var toDownload =
+                files.Where(f => f.Name.StartsWith("md-")).FirstOrDefault() ??
+                files.Where(f => !f.Name.StartsWith("sm-") && !f.Name.StartsWith("xs-")).FirstOrDefault(); 
+
+            if (toDownload != null) {
+                await this.theApp.DownloadFileAsync(toDownload);
             }
         }
     }

@@ -36,7 +36,7 @@ namespace ContosoMoments.Droid
         {
             var filePath = 
                 await FileHelper.GetLocalFilePathAsync(
-                    metadata.ParentDataItemId, metadata.FileName, dataFilesPath: await GetDataFilesPath());
+                    metadata.ParentDataItemId, dataFilesPath: await GetDataFilesPath());
             return new PathMobileServiceFileDataSource(filePath);
         }
 

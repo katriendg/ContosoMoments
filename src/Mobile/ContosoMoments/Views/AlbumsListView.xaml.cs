@@ -47,7 +47,7 @@ namespace ContosoMoments.Views
 
             if (albumsList.ItemsSource == null) {
                 await LoadItemsAsync(); // load items from the offline cache
-                await SyncItemsAsync(true);
+                await SyncItemsAsync(pullChanges: true, showActivityIndicator: true);
             }
         }
 
@@ -59,7 +59,7 @@ namespace ContosoMoments.Views
         public async Task RefreshAsync(bool showIndicator)
         {
             try {
-                await SyncItemsAsync(showIndicator);
+                await SyncItemsAsync(pullChanges: false, showActivityIndicator: showIndicator);
             }
             catch (Exception ex) {
                 await DisplayAlert("Refresh Error", "Couldn't refresh data (" + ex.Message + ")", "OK");
@@ -104,7 +104,7 @@ namespace ContosoMoments.Views
             }
         }
 
-        private async Task SyncItemsAsync(bool showActivityIndicator)
+        private async Task SyncItemsAsync(bool pullChanges, bool showActivityIndicator)
         {
             using (var scope = new ActivityIndicatorScope(syncIndicator, showActivityIndicator)) {
                 viewModel.ShowInputControl = false;
@@ -112,7 +112,7 @@ namespace ContosoMoments.Views
                     await App.Instance.SyncAlbumsAsync();
 
                     // should not await call to app.SyncAsync() because it should happen in the background
-                    var ignore = App.Instance.SyncAsync();
+                    var ignore = App.Instance.SyncAsync(pullChanges);
                 }
                 else {
                     await DisplayAlert("Working Offline", "Couldn't sync data - device is offline or Web API is not available. Please try again when data connection is back", "OK");

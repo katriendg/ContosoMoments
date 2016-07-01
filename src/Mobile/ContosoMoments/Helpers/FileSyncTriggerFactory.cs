@@ -13,20 +13,24 @@ namespace ContosoMoments
     {
         private readonly bool autoUpdateRecords;
         private readonly IMobileServiceClient mobileServiceClient;
+        private readonly FileSyncHandler syncHandler;
 
-        public FileSyncTriggerFactory(IMobileServiceClient mobileServiceClient, bool autoUpdateParentRecords)
+        public FileSyncTriggerFactory(IMobileServiceClient mobileServiceClient, FileSyncHandler syncHandler, bool autoUpdateParentRecords)
         {
             if (mobileServiceClient == null) {
                 throw new ArgumentNullException("mobileServiceClient");
             }
 
             this.mobileServiceClient = mobileServiceClient;
+            this.syncHandler = syncHandler;
             this.autoUpdateRecords = autoUpdateParentRecords;
         }
 
         public IList<IFileSyncTrigger> CreateTriggers(IFileSyncContext fileSyncContext)
         {
-            return new List<IFileSyncTrigger> { new CustomFileSyncTrigger(fileSyncContext, this.mobileServiceClient, this.autoUpdateRecords) };
+            return new List<IFileSyncTrigger> {
+                new CustomFileSyncTrigger(fileSyncContext, this.mobileServiceClient, this.syncHandler, this.autoUpdateRecords)
+            };
         }
     }
 
@@ -36,8 +40,9 @@ namespace ContosoMoments
         private readonly IDisposable fileChangeNotificationSubscription;
         private readonly IFileSyncContext fileSyncContext;
         private readonly IMobileServiceClient mobileServiceClient;
+        private readonly FileSyncHandler syncHandler;
 
-        public CustomFileSyncTrigger(IFileSyncContext fileSyncContext, IMobileServiceClient mobileServiceClient, bool autoUpdateParentRecords)
+        public CustomFileSyncTrigger(IFileSyncContext fileSyncContext, IMobileServiceClient mobileServiceClient, FileSyncHandler syncHandler, bool autoUpdateParentRecords)
         {
             if (fileSyncContext == null) {
                 throw new ArgumentNullException("fileSyncContext");
@@ -49,6 +54,7 @@ namespace ContosoMoments
 
             this.fileSyncContext = fileSyncContext;
             this.mobileServiceClient = mobileServiceClient;
+            this.syncHandler = syncHandler;
 
             this.dataChangeNotificationSubscription = mobileServiceClient.EventManager.Subscribe<StoreOperationCompletedEvent>(OnStoreOperationCompleted);
 
@@ -106,6 +112,7 @@ namespace ContosoMoments
                     if (storeOperationEvent.Operation.Source == StoreOperationSource.ServerPull
                         || storeOperationEvent.Operation.Source == StoreOperationSource.ServerPush) {
                         await this.fileSyncContext.PullFilesAsync(storeOperationEvent.Operation.TableName, storeOperationEvent.Operation.RecordId);
+                        await this.syncHandler.ProcessFilesAsync(storeOperationEvent.Operation.RecordId);
                     }
                     break;
                 case LocalStoreOperationKind.Delete:

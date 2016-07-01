@@ -80,7 +80,7 @@ namespace ContosoMoments.ViewModels
                     im.File = result.FirstOrDefault();
 
                     if (im.File != null) {
-                        string filePath = await FileHelper.GetLocalFilePathAsync(im.Id, im.File.Name, app.DataFilesPath);
+                        string filePath = await FileHelper.GetLocalFilePathAsync(im.Id, app.DataFilesPath);
                         im.ImageLoaded = await FileSystem.Current.LocalStorage.CheckExistsAsync(filePath) == ExistenceCheckResult.FileExists;
                     }
                 }

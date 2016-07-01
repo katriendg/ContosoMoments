@@ -1,6 +1,5 @@
 ﻿using ContosoMoments.Views;
 using Microsoft.WindowsAzure.MobileServices;
-using Microsoft.WindowsAzure.MobileServices.Eventing;
 using Microsoft.WindowsAzure.MobileServices.Files;
 using Microsoft.WindowsAzure.MobileServices.SQLiteStore;
 using Microsoft.WindowsAzure.MobileServices.Sync;
@@ -121,7 +120,7 @@ namespace ContosoMoments
             await MainPage.Navigation.PushModalAsync(loginPage);
             Settings.Current.AuthenticationType = await loginPage.GetResultAsync();
 
-            await SyncAsync(notify: true);
+            await SyncAsync(true, notify: true);
         }
 
         internal async Task LogoutAsync()
@@ -155,7 +154,12 @@ namespace ContosoMoments
                 store.DefineTable<Models.Image>();
 
                 // Initialize file sync
-                MobileService.InitializeFileSyncContext(new FileSyncHandler(this), store, new FileSyncTriggerFactory(MobileService, true));
+                var syncHandler = new FileSyncHandler(this);
+
+                MobileService.InitializeFileSyncContext(
+                    syncHandler, 
+                    store, 
+                    new FileSyncTriggerFactory(MobileService, syncHandler, true));
 
                 // Uses the default conflict handler, which fails on conflict
                 await MobileService.SyncContext.InitializeAsync(store, StoreTrackingOptions.NotifyLocalAndServerOperations);
@@ -168,16 +172,20 @@ namespace ContosoMoments
             await albumTableSync.PullAsync(AllAlbumsQueryString, albumTableSync.CreateQuery());
         }
 
-        public async Task SyncAsync(bool notify = false)
+        public async Task SyncAsync(bool pullChanges, bool notify = false)
         {
             await imageTableSync.PushFileChangesAsync();
             await MobileService.SyncContext.PushAsync();
 
-            await albumTableSync.PullAsync(AllAlbumsQueryString, albumTableSync.CreateQuery());
-            await imageTableSync.PullAsync(AllImagesQueryString, imageTableSync.CreateQuery());
+            if (pullChanges) {
+                Debug.WriteLine("App.SyncAsync: pull changes");
 
-            if (notify) {
-                await MobileService.EventManager.PublishAsync(SyncCompletedEvent.Instance);
+                await albumTableSync.PullAsync(AllAlbumsQueryString, albumTableSync.CreateQuery());
+                await imageTableSync.PullAsync(AllImagesQueryString, imageTableSync.CreateQuery());
+
+                if (notify) {
+                    await MobileService.EventManager.PublishAsync(SyncCompletedEvent.Instance);
+                }
             }
         }
 
@@ -202,7 +210,7 @@ namespace ContosoMoments
             Debug.WriteLine("Starting file download - " + file.Name);
 
             IPlatform platform = DependencyService.Get<IPlatform>();
-            var path = await FileHelper.GetLocalFilePathAsync(file.ParentId, file.Name, DataFilesPath);
+            var path = await FileHelper.GetLocalFilePathAsync(file.ParentId, DataFilesPath);
             var tempPath = Path.ChangeExtension(path, ".temp");
 
             await platform.DownloadFileAsync(imageTableSync, file, tempPath);

@@ -65,7 +65,7 @@ namespace ContosoMoments.Views
                         var image = await App.Instance.AddImageAsync(viewModel.Album, sourceImagePath);
 
                         viewModel.Images.Add(image); // add image, item will appear and image will upload asynchronously
-                        await SyncItemsAsync(true, refreshView: false);
+                        await SyncItemsAsync(true, pullChanges: false, refreshView: false);
                     }
 
                 }
@@ -83,7 +83,7 @@ namespace ContosoMoments.Views
         public async Task RefreshAsync()
         {
             try {
-                await SyncItemsAsync(true, refreshView: true);
+                await SyncItemsAsync(true, pullChanges: false, refreshView: true);
             }
             catch (Exception) {
                 await DisplayAlert("Refresh Error", "Couldn't refresh data", "OK");
@@ -111,15 +111,15 @@ namespace ContosoMoments.Views
             
         public async void OnSyncItems(object sender, EventArgs e)
         {
-            await SyncItemsAsync(false, refreshView: true);
+            await SyncItemsAsync(false, refreshView: true, pullChanges: true);
             imagesList.EndRefresh();
         }
 
-        private async Task SyncItemsAsync(bool showActivityIndicator, bool refreshView)
+        private async Task SyncItemsAsync(bool showActivityIndicator, bool refreshView, bool pullChanges)
         {
             using (var scope = new ActivityIndicatorScope(syncIndicator, showActivityIndicator)) {
                 if (Utils.IsOnline() && await Utils.SiteIsOnline()) {
-                    await App.Instance.SyncAsync();
+                    await App.Instance.SyncAsync(pullChanges);
                 }
                 else {
                     await DisplayAlert("Working Offline", "Couldn't sync data - device may be offline", "OK");

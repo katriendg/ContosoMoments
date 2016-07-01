@@ -36,7 +36,7 @@ namespace ContosoMoments.Models
                 _file = value;
 
                 if (_file != null) {
-                    FileHelper.GetLocalFilePathAsync(Id, _file.Name, App.Instance.DataFilesPath)
+                    FileHelper.GetLocalFilePathAsync(Id, App.Instance.DataFilesPath)
                         .ContinueWith(x => this.Uri = x.Result);
                 }
 

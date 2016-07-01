@@ -30,7 +30,7 @@ namespace ContosoMoments.iOS
 
         public async Task<IMobileServiceFileDataSource> GetFileDataSource(MobileServiceFileMetadata metadata)
         {
-            var filePath = await FileHelper.GetLocalFilePathAsync(metadata.ParentDataItemId, metadata.FileName, await GetDataFilesPath());
+            var filePath = await FileHelper.GetLocalFilePathAsync(metadata.ParentDataItemId, await GetDataFilesPath());
             return new PathMobileServiceFileDataSource(filePath);
         }
 
